@@ -12,11 +12,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Database types
 export interface Account {
   id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
-  account_number: string;
+  master_account: string;
+  account_type: string;
+  active: boolean;
   balance?: number;
-  status: 'active' | 'inactive';
+  net_liquidating_value?: number;
+  cash_balance?: number;
   created_at: string;
   updated_at: string;
 }

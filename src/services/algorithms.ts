@@ -40,8 +40,9 @@ class AlgorithmsService {
   // Fetch all user accounts from Supabase
   async fetchAccounts() {
     const { data, error } = await supabase
-      .from('accounts')
+      .from('trading_accounts')
       .select('*')
+      .eq('active', true)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -61,11 +62,11 @@ class AlgorithmsService {
 
   // Fetch 30-minute candles for Nine Point algorithm
   async fetch30MinCandles(symbol: string, limit: number = 2) {
-    const { data, error } = await supabase
-      .from('candles_30m')
+    const { data, error} = await supabase
+      .from('nq_candles_30min_latest')
       .select('*')
       .eq('symbol', symbol)
-      .order('timestamp', { ascending: false })
+      .order('candle_time', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
@@ -74,36 +75,36 @@ class AlgorithmsService {
 
   // Get first hour candles after market open (first two 30-min candles)
   async getFirstHourCandles(symbol: string, date?: string) {
-    // Get today's date in ET timezone
-    const marketDate = date || new Date().toISOString().split('T')[0];
-    
-    // Market opens at 9:30 AM ET, we need candles from 9:30-10:00 and 10:00-10:30
-    const startTime = `${marketDate} 09:30:00`;
-    const endTime = `${marketDate} 10:30:00`;
-
+    // Query for candles from 9:00-10:00 AM ET (first two 30-min candles)
     const { data, error } = await supabase
-      .from('candles_30m')
+      .from('nq_candles_30min_latest')
       .select('*')
       .eq('symbol', symbol)
-      .gte('timestamp', startTime)
-      .lt('timestamp', endTime)
-      .order('timestamp', { ascending: true })
-      .limit(2);
+      .gte('candle_time', new Date().toISOString().split('T')[0])
+      .order('candle_time', { ascending: true })
+      .limit(4);
 
     if (error) throw error;
 
-    // Calculate the high and low of the first hour
+    // Filter for 9:00 and 9:30 AM candles
     if (data && data.length >= 2) {
-      const high = Math.max(data[0].high, data[1].high);
-      const low = Math.min(data[0].low, data[1].low);
-      return {
-        high,
-        low,
-        open: data[0].open,
-        close: data[1].close,
-        volume: data[0].volume + data[1].volume,
-        timestamp: data[0].timestamp
-      };
+      const candles = data.filter((c: any) => {
+        const hour = new Date(c.candle_time).getUTCHours() + (new Date().getTimezoneOffset() / -60);
+        return hour === 9 || (hour === 10 && new Date(c.candle_time).getMinutes() === 0);
+      }).slice(0, 2);
+
+      if (candles.length >= 2) {
+        const high = Math.max(parseFloat(candles[0].high), parseFloat(candles[1].high));
+        const low = Math.min(parseFloat(candles[0].low), parseFloat(candles[1].low));
+        return {
+          high,
+          low,
+          open: parseFloat(candles[0].open),
+          close: parseFloat(candles[1].close),
+          volume: parseInt(candles[0].volume) + parseInt(candles[1].volume),
+          timestamp: candles[0].candle_time
+        };
+      }
     }
     
     return null;

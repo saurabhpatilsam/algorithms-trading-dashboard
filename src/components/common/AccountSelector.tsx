@@ -121,17 +121,17 @@ const AccountSelector: React.FC<AccountSelectorProps> = ({
                     <div>
                       <p className="font-medium">{account.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {account.account_number}
+                        {account.master_account} ({account.account_type})
                       </p>
-                      {account.balance && (
+                      {account.cash_balance && (
                         <p className="text-sm mt-1">
-                          Balance: ${account.balance.toLocaleString()}
+                          Balance: ${parseFloat(account.cash_balance.toString()).toLocaleString()}
                         </p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={account.status === 'active' ? 'success' : 'secondary'}>
-                        {account.status}
+                      <Badge variant={account.active ? 'success' : 'secondary'}>
+                        {account.active ? 'active' : 'inactive'}
                       </Badge>
                       {selectedAccounts.includes(account.id) ? (
                         <Check className="h-5 w-5 text-primary" />
